@@ -2,16 +2,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
-[CreateAssetMenu(fileName = "New_ObjectList", menuName = "ScriptableObjects/ObjectList", order = 1)]
-public class ObjectList : ScriptableObject
+public class GameData
 {
 	[SerializeField] public List<int> objectList;
-	[SerializeField] private int limit;
+	[SerializeField] public List<Vector3> oreLocations;
+	[SerializeField] public int limit;
 	public int Limit { get { return limit; } set { limit = value; } }
+	public GameData()
+	{
+		Verify();
+	}
 	void Verify()
 	{
 		if (objectList == null) objectList = new List<int>();
+		if (oreLocations == null) oreLocations = new List<Vector3>();
 	}
 	public void Add(int value)
 	{

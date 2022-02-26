@@ -3,48 +3,58 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Linq;
 
 public class WorkOrderUI : MonoBehaviour
 {
     [SerializeField] Transform workorderContainer;
+    [SerializeField] Button calculateBtn;
     [SerializeField] RectTransform displayBackground;
     [SerializeField] TextMeshProUGUI display;
     [SerializeField] Button removeBtn;
     [SerializeField] Button clearBtn;
     [SerializeField] InputField cargoLimit;
-    [SerializeField] ObjectList workOrders;
 
     List<InputField> inputFields = new List<InputField>();
-    int[] workOrderManifest;
+    List<int> manifest;
 
 	private void Awake()
     {
         removeBtn.onClick.AddListener(delegate { RemoveOrders(); });
         clearBtn.onClick.AddListener(delegate { ClearOrders(); });
-        cargoLimit.onEndEdit.AddListener(delegate { UpdateLimit(); });
+        calculateBtn.onClick.AddListener(delegate { Calculate(); });
     }
 
 	void Start()
     {
-        if (cargoLimit.text != workOrders.Limit.ToString()) cargoLimit.text = workOrders.Limit.ToString();
+        if (cargoLimit.text != GameManager.gameData.Limit.ToString()) cargoLimit.text = GameManager.gameData.Limit.ToString();
+        cargoLimit.onEndEdit.AddListener(delegate { UpdateLimit(); });
         InitializeWorkOrders();
 	}
 
-    void InitializeWorkOrders()
+	void InitializeWorkOrders()
     {
-        if (workOrders.objectList.Count > 0)
+        if (GameManager.gameData.objectList.Count > 0)
         {
-            for (int i = 0; i < workOrders.objectList.Count; i++)
+            for (int i = 0; i < GameManager.gameData.objectList.Count; i++)
             {
-                CreateInputField(null);
-                inputFields[inputFields.Count - 1].SetTextWithoutNotify(workOrders.objectList[i].ToString());
-            }
-            StartCoroutine(DeselectInput());
+                CreateInputField().SetTextWithoutNotify(GameManager.gameData.objectList[i].ToString());
+			}
         }
-        else
-        {
-            CreateInputField(null);
-        }
+
+        AddBlankInputField();
+
+		for (int i = 0; i < inputFields.Count - 1; i++)
+		{
+			StartCoroutine(AddUpdateListener(inputFields[i]));
+		}
+    }
+
+    void AddBlankInputField()
+    {
+        InputField inputField = CreateInputField();
+        StartCoroutine(AddUpdateListener(inputField));
+        StartCoroutine(AddNewFieldListener(inputField));
     }
 
     IEnumerator DeselectInput()
@@ -53,77 +63,88 @@ public class WorkOrderUI : MonoBehaviour
         clearBtn.Select();
     }
 
-    void CreateInputField(string txt = "")
-	{
-        if (txt == null || txt != "")
-        {
-            GameObject obj = Instantiate(Resources.Load("InputField"), workorderContainer) as GameObject;
-            obj.transform.SetSiblingIndex(obj.transform.parent.childCount - 4);
-            InputField inputField = obj.GetComponent<InputField>();
-            AddInputFieldToList(inputField);
-            inputField.Select();
-        }
+    InputField CreateInputField()
+    {
+        GameObject obj = Instantiate(Resources.Load("InputField"), workorderContainer) as GameObject;
+        obj.transform.SetSiblingIndex(obj.transform.parent.childCount - 4);
+        InputField inputField = obj.GetComponent<InputField>();
+        inputField.Select();
+        inputFields.Add(inputField);
+        return inputField;
     }
 
-    void AddInputFieldListeners(InputField inputField)
+    void AddNewInputField(InputField inputField)
     {
+        if (string.IsNullOrEmpty(inputField.text)) return;
+
+        inputField.onEndEdit.RemoveAllListeners();
+        StartCoroutine(AddUpdateListener(inputField));
+        AddBlankInputField();
+    }
+
+    IEnumerator AddUpdateListener(InputField inputField)
+    {
+        yield return null;
         inputField.onEndEdit.AddListener(delegate { UpdateWorkOrderList(); });
     }
 
-    void AddInputFieldToList(InputField inputField)
+    IEnumerator AddNewFieldListener(InputField inputField)
     {
-        AddInputFieldListeners(inputField);
-        if (inputFields.Count > 0) inputFields[inputFields.Count - 1].onEndEdit.RemoveListener(delegate { CreateInputField(inputField.text); });
-        inputField.onEndEdit.AddListener(delegate { CreateInputField(inputField.text); });
-        inputFields.Add(inputField);
+        yield return null;
+        inputField.onEndEdit.AddListener(delegate { AddNewInputField(inputField); });
     }
 
     void UpdateWorkOrderList()
     {
-        workOrders.Clear();
-        foreach (InputField field in inputFields)
+        GameManager.gameData.objectList.Clear();
+
+        for (int i = 0; i < inputFields.Count; i++)
         {
             int value;
-            if (int.TryParse(field.text, out value) && value > 0)
+            if (int.TryParse(inputFields[i].text, out value) && value > 0)
             {
-                workOrders.objectList.Add(value);
+                GameManager.gameData.objectList.Add(value);
             }
         }
-        Calculate();
+
+        JSONManager.Instance.SaveData(GameManager.gameData);
     }
 
     void UpdateLimit()
 	{
-        if (workOrders.UpdateCargoLimit(cargoLimit.text)) Calculate();
+        GameManager.gameData.UpdateCargoLimit(cargoLimit.text);
     }
 
     void RemoveOrders()
-	{
-		for (int i = 0; i < workOrderManifest.Length; i++)
+    {
+        if (manifest.Count <= 0) return;
+
+        foreach (int num in manifest)
         {
-            InputField found = inputFields.Find((field) => field.text == workOrderManifest[i].ToString());
+            InputField found = inputFields.Find((field) => field.text == num.ToString());
             inputFields.Remove(found);
             Destroy(found.gameObject);
         }
 
-        display.text = "";
-        removeBtn.gameObject.SetActive(false);
-        Calculate();
+        manifest.Clear();
+        UpdateWorkOrderList();
     }
 
     void ClearOrders()
-	{
-		for (int i = 0; i < inputFields.Count; i++)
+    {
+        for (int i = 0; i < inputFields.Count; i++)
         {
             Destroy(inputFields[i].gameObject);
         }
 
         inputFields.Clear();
-        workOrders.Clear();
-        workOrderManifest = null;
-        display.text = "";
+        GameManager.gameData.Clear();
+        manifest.Clear();
+        display.text = $"No valid orders.";
         removeBtn.gameObject.SetActive(false);
-        CreateInputField(null);
+        JSONManager.Instance.SaveData(GameManager.gameData);
+
+        AddBlankInputField();
     }
 
     void Calculate()
@@ -131,26 +152,30 @@ public class WorkOrderUI : MonoBehaviour
         var sum = 0;
         display.text = "";
 
-        int limit = 10;
+        int limit;
+
 		if (int.TryParse(cargoLimit.text, out limit))
-			workOrderManifest = GreatestSum.BestSum(limit * 100, workOrders.objectList.ToArray());
-
-        if (workOrderManifest.Length > 0)
         {
-            foreach (var num in workOrderManifest)
+            manifest = GreatestSum.BestSum(limit * 100, GameManager.gameData.objectList);
+
+            if (manifest.Count > 0)
             {
-                display.text += num + "\n";
-                sum += num;
+                foreach (var num in manifest)
+                {
+                    display.text += num + "\n";
+                    sum += num;
+                }
+
+                displayBackground.sizeDelta = new Vector2(0, (30 * manifest.Count) + 110);
+				display.text += $"\n{sum / 100} SCUs";
+				display.text += $"\n";
+                display.text += $"\n{sum} units";
+                removeBtn.gameObject.SetActive(true);
             }
-
-            displayBackground.sizeDelta = new Vector2(0, (30 * workOrderManifest.Length) + 60);
-            display.text += $"\n{sum / 100} SCUs";
-            removeBtn.gameObject.SetActive(true);
+            else
+            {
+                display.text = $"No valid orders.";
+            }
         }
-        else
-		{
-            display.text = $"No valid orders.";
-        }
-
     }
 }
