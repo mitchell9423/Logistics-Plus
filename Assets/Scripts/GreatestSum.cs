@@ -74,8 +74,8 @@ public class GreatestSum
     public static List<Memoizer> memoizer = new List<Memoizer>();
     private static int target;
     private static List<int> list;
-    private static int bestSum = 0;
-    private static List<int> bestPath;
+    public static int bestSum = 0;
+    public static List<int> bestPath = new List<int>();
     /// <summary>
     /// Find the combination from an array of positive integers with the sum closest to the target sum without exceeding it.
     /// If two combination are equally close, return the longest combination.
@@ -87,25 +87,39 @@ public class GreatestSum
     {
         target = targetSum;
         list = numbers;
-        return ComputeTree();
+        bestSum = 0;
+        bestPath = new List<int>();
+        ComputeTree(bestPath, 0);
+        return bestPath;
     }
 
-    public static List<int> ComputeTree(int sum = 0, int index = 0)
-	{
-        if (index >= list.Count || sum >= target) return new List<int>();
+    public static void ComputeTree(List<int> path, int index = 0)
+    {
+        path = new List<int>(path);
+        int sum = path.Sum();
 
-        List<int> exc = ComputeTree(sum, index + 1);
-        int excSum = exc.Sum();
+        if (index >= list.Count || sum > target) return;
 
-        List<int> inc = ComputeTree(sum + list[index], index + 1);
-        inc.Add(list[index]);
-        int incSum = inc.Sum();
+        if (sum > bestSum || (sum == bestSum && path.Count > bestPath.Count))
+        {
+            bestSum = sum;
+            bestPath = new List<int>(path);
+        }
 
-        if (incSum > target) return exc;
+        ComputeTree(path, index + 1);
+        
+        path.Add(list[index]);
+        sum = path.Sum();
 
-        if (incSum == excSum) return inc.Count > exc.Count ? inc : exc;
+        if (sum > target) return;
 
-        return incSum > excSum ? inc : exc;
+        if (sum > bestSum || (sum == bestSum && path.Count > bestPath.Count))
+        {
+            bestSum = sum;
+            bestPath = new List<int>(path);
+        }
+
+        ComputeTree(path, index + 1);
     }
 
     public static List<int> Compute(int targetSum, List<int> numbers)
