@@ -156,7 +156,7 @@ public class WorkOrderUI : MonoBehaviour
 
 		if (int.TryParse(cargoLimit.text, out limit))
         {
-            manifest = GreatestSum.BestSum(limit * 100, GameManager.gameData.objectList);
+            manifest = GreatestSum.BestSum(GameManager.gameData.objectList, limit * 100);
 
             if (manifest.Count > 0)
             {
@@ -178,4 +178,11 @@ public class WorkOrderUI : MonoBehaviour
             }
         }
     }
+
+    void CreateGraph()
+	{
+        Graph graph = new Graph(GameManager.gameData.objectList);
+        //GreatestSum.ComputeGraph(graph);
+        display.text = graph.PrintAdjacencyList();
+	}
 }

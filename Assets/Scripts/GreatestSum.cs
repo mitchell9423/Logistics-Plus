@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using System.Linq;
+using UnityEngine;
 
 public class Memoizer
 {
@@ -13,11 +15,67 @@ public class Memoizer
 	}
 }
 
+public class Graph
+{
+    private List<int> values;
+    private int totalVertices;
+    private LinkedList<int>[] adjacencyList;
+    public LinkedList<int>[] AdjacencyList { get; }
+    public int Size { get { return totalVertices; } }
+    public Graph(List<int> _values)
+	{
+        values = _values;
+        int n = _values.Count;
+        totalVertices = n;
+        adjacencyList = new LinkedList<int>[n];
+
+		for (int i = 0; i < n; i++)
+		{
+            adjacencyList[i] = new LinkedList<int>();
+		}
+
+        AddEdges();
+    }
+
+    public void AddEdges()
+    {
+        for (int i = 0; i < totalVertices; i++)
+        {
+            for (int j = 0; j < totalVertices; j++)
+            {
+                if (j != i) adjacencyList[i].AddLast(j);
+            }
+        }
+	}
+
+    public string PrintAdjacencyList()
+	{
+        string nodeString = "";
+		for (int i = 0; i < adjacencyList.Length; i++)
+		{
+            if (adjacencyList[i].Count > 0)
+			{
+            nodeString += $"[Node Value: {values[i]} with Neighbors";
+			foreach (var item in adjacencyList[i])
+			{
+                nodeString += $" -> {values[item]}";
+			}
+            nodeString += $" ]\n";
+			}
+		}
+
+        return nodeString;
+	}
+}
+
 public class GreatestSum
 {
     // Memoizer
     public static List<Memoizer> memoizer = new List<Memoizer>();
-    
+    private static int target;
+    private static List<int> list;
+    private static int bestSum = 0;
+    private static List<int> bestPath;
     /// <summary>
     /// Find the combination from an array of positive integers with the sum closest to the target sum without exceeding it.
     /// If two combination are equally close, return the longest combination.
@@ -25,10 +83,29 @@ public class GreatestSum
     /// <param name="targetSum">A positive integer.</param>
     /// <param name="numbers">An list of positive integers.</param>
     /// <returns>An integer list containing the best combination.</returns>
-    public static List<int> BestSum(int targetSum, List<int> numbers)
+    public static List<int> BestSum(List<int> numbers, int targetSum)
     {
-        memoizer.Clear();
-        return Compute(targetSum, numbers);
+        target = targetSum;
+        list = numbers;
+        return ComputeTree();
+    }
+
+    public static List<int> ComputeTree(int sum = 0, int index = 0)
+	{
+        if (index >= list.Count || sum >= target) return new List<int>();
+
+        List<int> exc = ComputeTree(sum, index + 1);
+        int excSum = exc.Sum();
+
+        List<int> inc = ComputeTree(sum + list[index], index + 1);
+        inc.Add(list[index]);
+        int incSum = inc.Sum();
+
+        if (incSum > target) return exc;
+
+        if (incSum == excSum) return inc.Count > exc.Count ? inc : exc;
+
+        return incSum > excSum ? inc : exc;
     }
 
     public static List<int> Compute(int targetSum, List<int> numbers)
