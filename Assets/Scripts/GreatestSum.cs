@@ -95,10 +95,9 @@ public class GreatestSum
 
     public static void ComputeTree(List<int> path, int index = 0)
     {
-        path = new List<int>(path);
         int sum = path.Sum();
 
-        if (index >= list.Count || sum > target) return;
+        if (index >= list.Count || sum >= target) return;
 
         if (sum > bestSum || (sum == bestSum && path.Count > bestPath.Count))
         {
@@ -107,11 +106,12 @@ public class GreatestSum
         }
 
         ComputeTree(path, index + 1);
-        
+
+        path = new List<int>(path);
         path.Add(list[index]);
         sum = path.Sum();
 
-        if (sum > target) return;
+        if (sum >= target) return;
 
         if (sum > bestSum || (sum == bestSum && path.Count > bestPath.Count))
         {

@@ -22,7 +22,7 @@ public class WorkOrderUI : MonoBehaviour
     {
         removeBtn.onClick.AddListener(delegate { RemoveOrders(); });
         clearBtn.onClick.AddListener(delegate { ClearOrders(); });
-        calculateBtn.onClick.AddListener(delegate { Calculate(); });
+        calculateBtn.onClick.AddListener(delegate { StartCoroutine(Calculate()); });
     }
 
 	void Start()
@@ -147,7 +147,7 @@ public class WorkOrderUI : MonoBehaviour
         AddBlankInputField();
     }
 
-    void Calculate()
+    IEnumerator Calculate()
 	{
         var sum = 0;
         display.text = "";
@@ -156,7 +156,9 @@ public class WorkOrderUI : MonoBehaviour
 
 		if (int.TryParse(cargoLimit.text, out limit))
         {
+            manifest = null;
             manifest = GreatestSum.BestSum(GameManager.gameData.objectList, limit * 100);
+            yield return new WaitUntil(() => manifest != null);
 
             if (manifest.Count > 0)
             {
