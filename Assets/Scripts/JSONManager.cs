@@ -60,12 +60,12 @@ public class JSONManager : MonoBehaviour
             SaveData(new GameData());
             using (StreamReader reader = new StreamReader(path))
             {
+                // Let the user know what went wrong.
+                Debug.Log("The file could not be read:");
+                Debug.Log(e.Message);
                 string json = reader.ReadToEnd();
                 return JsonUtility.FromJson<T>(json);
             }
-            // Let the user know what went wrong.
-            Debug.Log("The file could not be read:");
-            Debug.Log(e.Message);
         }
 	}
 }
